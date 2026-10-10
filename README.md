@@ -2,7 +2,7 @@
 
 CareerPilot AI is an intelligent career-planning platform that transforms ambitious career targets into structured, step-by-step visual roadmaps. By analyzing your current background, skill set, and target timeline, CareerPilot AI breaks down complex career transitions into bite-sized milestones complete with actionable guidance.
 
-🌐 **Live Demo:** [careerpilot-ai-yaxit.vercel.app](https://careerpilot-ai-yaxit.vercel.app/)
+🌐 **Live Demo:** [careerpilot-ai-woad-rho.vercel.app](https://careerpilot-ai-woad-rho.vercel.app/)
 
 ---
 
