@@ -1119,3 +1119,472 @@ footer {
   color: #9aaac0;
   font-size: 12px;
 }
+
+/* Step 1: Welcome screen */
+.welcome-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.welcome-hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 70px 0;
+  text-align: center;
+}
+
+.welcome-hero h1 {
+  margin: 24px 0 18px;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: clamp(38px, 6vw, 68px);
+  line-height: 1.12;
+  letter-spacing: -2.5px;
+}
+
+.welcome-hero h1 span {
+  color: var(--accent);
+}
+
+.welcome-hero > p {
+  max-width: 620px;
+  color: #a8bad2;
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.welcome-button {
+  min-width: 180px;
+  min-height: 52px;
+  margin-top: 24px;
+  font-size: 15px;
+}
+
+.welcome-features {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  width: 100%;
+  margin-top: 65px;
+  text-align: left;
+}
+
+.welcome-features article {
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.welcome-features article > svg {
+  color: var(--accent);
+}
+
+.welcome-features h3 {
+  margin: 18px 0 10px;
+  font-size: 16px;
+}
+
+.welcome-features p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+@media (max-width: 700px) {
+  .welcome-hero {
+    padding: 45px 0;
+  }
+
+  .welcome-features {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 40px;
+  }
+
+  .welcome-hero h1 {
+    letter-spacing: -1.5px;
+  }
+
+  .welcome-hero > p {
+    font-size: 14px;
+  }
+}
+
+/* Navigation styles */
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+
+.nav-link:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-link.active {
+  color: var(--accent);
+  background: rgba(99, 230, 190, 0.1);
+  border: 1px solid rgba(99, 230, 190, 0.2);
+}
+
+/* Page content container */
+.page-content {
+  width: 100%;
+  min-height: calc(100vh - 160px);
+}
+
+/* Page layouts */
+.profile-page-container {
+  max-width: 640px;
+  margin: 36px auto 60px;
+}
+
+.roadmap-page-container {
+  max-width: 960px;
+  margin: 32px auto 60px;
+}
+
+.milestone-details-page-container {
+  max-width: 780px;
+  margin: 28px auto 60px;
+}
+
+.action-plan-page-container {
+  max-width: 820px;
+  margin: 28px auto 60px;
+}
+
+.not-found-page-container {
+  max-width: 600px;
+  margin: 60px auto;
+  text-align: center;
+}
+
+/* Page navigation helper */
+.page-header-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 12px;
+}
+
+.button-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hero-cta-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.welcome-secondary-button {
+  min-height: 52px;
+  padding: 11px 22px;
+  font-size: 15px;
+}
+
+.profile-existing-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 14px 18px;
+  border: 1px solid rgba(99, 230, 190, 0.25);
+  border-radius: 12px;
+  background: rgba(99, 230, 190, 0.06);
+  color: #c9e8dc;
+  font-size: 13px;
+}
+
+.profile-existing-banner .banner-btn {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 6px 14px;
+  font-size: 12px;
+}
+
+.roadmap-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.roadmap-edit-btn {
+  min-height: 36px;
+  padding: 6px 14px;
+  font-size: 12px;
+}
+
+/* Milestone details card */
+.milestone-details-card {
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: rgba(16, 26, 43, 0.94);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.12);
+}
+
+.milestone-desc {
+  margin: 16px 0 24px;
+  color: #c0cede;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.milestone-info-block {
+  margin: 22px 0;
+  padding: 16px 0;
+  border-top: 1px solid rgba(38, 52, 73, 0.6);
+}
+
+.milestone-info-block h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  color: #e2e8f0;
+  font-size: 14px;
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.milestone-info-block h4 svg {
+  color: var(--accent);
+}
+
+.milestone-info-block p {
+  margin: 0;
+  color: #a8bad2;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.milestone-info-block ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+  color: #cbd5e1;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.milestone-info-block li::marker {
+  color: var(--accent);
+}
+
+.prereq-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.prereq-link:hover {
+  color: #8af0d0;
+}
+
+/* Action plan ready box */
+.action-plan-actions-section {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.action-plan-ready-box {
+  padding: 18px;
+  border: 1px solid rgba(99, 230, 190, 0.25);
+  border-radius: 12px;
+  background: rgba(99, 230, 190, 0.05);
+}
+
+.action-plan-ready-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .nav-links {
+    gap: 4px;
+  }
+  .nav-link {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  .nav-link span {
+    display: none;
+  }
+  .status-text {
+    display: none;
+  }
+  .profile-page-container,
+  .roadmap-page-container,
+  .milestone-details-page-container,
+  .action-plan-page-container {
+    margin: 18px 0 40px;
+  }
+  .milestone-details-card {
+    padding: 18px;
+    border-radius: 16px;
+  }
+  .profile-existing-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Step Learning Resources */
+.advice-step-content {
+  min-width: 0;
+  width: 100%;
+}
+
+.step-resources-section {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(38, 52, 73, 0.6);
+}
+
+.step-resources-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.step-resources-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.resource-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(11, 20, 35, 0.7);
+  transition:
+    border-color 0.2s,
+    background 0.2s,
+    transform 0.2s;
+}
+
+.resource-card:hover {
+  border-color: rgba(99, 230, 190, 0.45);
+  background: rgba(16, 26, 43, 0.95);
+  transform: translateY(-2px);
+}
+
+.resource-header {
+  margin-bottom: 6px;
+}
+
+.resource-type-badge {
+  display: inline-block;
+  margin-bottom: 6px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(99, 230, 190, 0.12);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.resource-title {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.resource-description {
+  flex-grow: 1;
+  margin: 0 0 12px;
+  color: #a8bad2;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.resource-link-button {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid rgba(99, 230, 190, 0.25);
+  border-radius: 8px;
+  background: rgba(99, 230, 190, 0.1);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    border-color 0.2s;
+}
+
+.resource-link-button:hover {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #06251c;
+}
+
+.no-resources-note {
+  margin: 8px 0 0;
+  color: #718198;
+  font-size: 12px;
+  font-style: italic;
+}
+
+@media (max-width: 600px) {
+  .step-resources-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .resource-card {
+    padding: 12px;
+  }
+}

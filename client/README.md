@@ -1,16 +1,64 @@
-# React + Vite
+# CareerPilot AI 🚀
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+### AI-Powered Personalized Career Roadmap Generator
 
-Currently, two official plugins are available:
+CareerPilot AI helps students plan their careers by generating
+personalized learning roadmaps based on their education, existing
+skills, target role, available study hours, and career timeline.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Problem Statement
 
-## React Compiler
+Students often struggle to identify the skills, projects, and
+learning milestones required to achieve their target careers.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+CareerPilot AI addresses this problem by organizing career preparation
+into a structured, actionable learning roadmap.
 
-## Expanding the Oxlint configuration
+## Key Features
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+- Personalized career roadmaps
+- Interactive career milestone graph
+- AI-generated milestone action plans
+- Skills and project recommendations
+- Milestone progress tracking
+- Overall roadmap completion percentage
+- Persistent roadmap and progress using LocalStorage
+- Interview preparation questions
+- Recommended certifications
+
+## Technology Stack
+
+### Frontend
+- React
+- Vite
+- JavaScript
+- CSS
+- React Flow
+- Lucide React
+
+### Backend
+- Node.js
+- Express.js
+- AI API integration
+
+### Storage
+- Browser LocalStorage for roadmap and progress persistence
+
+## Project Architecture
+
+The React frontend collects career information and communicates
+with the Express backend.
+
+The backend generates a personalized roadmap and provides
+milestone-specific action plans.
+
+The frontend displays the roadmap and allows users to track
+their progress.
+
+## Installation
+
+### 1. Clone the repository
+
+```bash
+git clone YOUR_GITHUB_REPOSITORY_URL
+cd careerpilot-ai

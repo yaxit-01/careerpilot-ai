@@ -132,6 +132,88 @@ function validateRoadmap(roadmap) {
     }
   }
 }
+// URL validation and sanitization for learning resources.
+function isValidResourceUrl(urlString) {
+  if (!urlString || typeof urlString !== "string") return false;
+  const trimmed = urlString.trim();
+
+  // Reject unsafe schemes and injection attempts
+  if (
+    trimmed.startsWith("javascript:") ||
+    trimmed.startsWith("data:") ||
+    trimmed.startsWith("vbscript:") ||
+    trimmed.startsWith("file:") ||
+    trimmed.includes("<") ||
+    trimmed.includes(">")
+  ) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return false;
+    }
+
+    const host = parsed.hostname.toLowerCase();
+
+    // Reject localhost, local IPs, and placeholder domains
+    if (
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      host.endsWith(".local") ||
+      host.endsWith(".internal") ||
+      host === "example.com" ||
+      host === "example.org" ||
+      host === "example.net" ||
+      host.endsWith(".example") ||
+      host === "your-domain.com" ||
+      host === "placeholder.com" ||
+      host.includes("placeholder")
+    ) {
+      return false;
+    }
+
+    // Do not expose secrets or API keys in query parameters
+    if (/api[_-]?key|secret|token|password|auth/i.test(parsed.search)) {
+      return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Sanitize and deduplicate a list of resources.
+function sanitizeResources(resourcesList, maxCount = 3) {
+  if (!Array.isArray(resourcesList)) return [];
+  const valid = [];
+  const seenUrls = new Set();
+
+  for (const item of resourcesList) {
+    if (!item || typeof item !== "object") continue;
+    const title = typeof item.title === "string" ? item.title.trim() : "";
+    const url = typeof item.url === "string" ? item.url.trim() : "";
+    const type = typeof item.type === "string" ? item.type.trim() : "Official Documentation";
+    const description = typeof item.description === "string" ? item.description.trim() : "";
+
+    if (!title || !url || !isValidResourceUrl(url)) continue;
+    if (seenUrls.has(url)) continue;
+
+    seenUrls.add(url);
+    valid.push({
+      title,
+      url,
+      type,
+      description,
+    });
+
+    if (valid.length >= maxCount) break;
+  }
+
+  return valid;
+}
 
 // Generate an AI-powered action plan for a selected milestone.
 async function generateMilestoneAdvice({
@@ -151,7 +233,7 @@ async function generateMilestoneAdvice({
   const prompt = `
 You are CareerPilot AI, an expert technical career mentor.
 
-Create a practical, personalized action plan for the selected career milestone.
+Create a practical, personalized action plan for the selected career milestone, including high-quality, verified learning resources with real clickable URLs.
 
 STUDENT EDUCATION:
 ${education || "Not specified"}
@@ -175,7 +257,15 @@ Return ONLY valid JSON using this exact structure:
       "step": 1,
       "title": "Learning step title",
       "description": "Detailed actionable instructions",
-      "estimatedHours": 2
+      "estimatedHours": 2,
+      "resources": [
+        {
+          "title": "Bash Reference Manual",
+          "url": "https://www.gnu.org/software/bash/manual/bash.html",
+          "type": "Official Documentation",
+          "description": "Learn Bash scripting fundamentals and syntax."
+        }
+      ]
     }
   ],
   "project": {
@@ -191,20 +281,45 @@ Return ONLY valid JSON using this exact structure:
   ],
   "successCriteria": [
     "Measurable completion criterion"
+  ],
+  "resources": [
+    {
+      "title": "Overall Milestone Resource",
+      "url": "https://www.gnu.org/software/bash/manual/",
+      "type": "Official Documentation",
+      "description": "Comprehensive reference guide for the milestone."
+    }
   ]
 }
 
-REQUIREMENTS:
+REQUIREMENTS & RESOURCE GUIDELINES:
 1. Create 3 to 5 ordered, actionable learning steps.
-2. Include realistic estimated hours.
-3. Consider the student's education and existing skills.
-4. Include one practical project relevant to the milestone.
-5. Include 3 relevant interview questions with answers.
-6. Include 3 to 5 measurable success criteria.
-7. Keep the workload realistic for a student.
-8. Explain technical concepts accurately.
-9. Do not invent certification names or resource URLs.
-10. Return JSON only, without Markdown code fences.
+2. For EACH step, provide 1 to 3 high-quality learning resources matching the specific topic of that step.
+3. Provide 1 to 3 top-level resources in the milestone "resources" array for overall reference.
+4. RESOURCE QUALITY & AUTHORITATIVE SOURCES:
+   - For Linux: GNU Bash Manual (https://www.gnu.org/software/bash/manual/bash.html), Linux Journey (https://linuxjourney.com/), Linux man-pages (https://man7.org/linux/man-pages/), GNU sed (https://www.gnu.org/software/sed/manual/sed.html), GNU awk (https://www.gnu.org/software/gawk/manual/gawk.html), systemd documentation (https://systemd.io/).
+   - For AWS: AWS Documentation (https://docs.aws.amazon.com/), AWS Getting Started (https://aws.amazon.com/getting-started/), AWS Skill Builder (https://explore.skillbuilder.aws/).
+   - For Docker: Docker Documentation (https://docs.docker.com/).
+   - For Kubernetes: Kubernetes Documentation (https://kubernetes.io/docs/home/).
+   - For Terraform: HashiCorp Developer Docs (https://developer.hashicorp.com/terraform/docs).
+   - For Git: Git SCM Docs & Pro Git (https://git-scm.com/doc).
+   - For Networking: Cloudflare Learning Center (https://www.cloudflare.com/learning/), Cisco DevNet (https://developer.cisco.com/).
+   - For Python: Official Python Docs (https://docs.python.org/3/).
+   - For Web Development / JS / Node.js: MDN Web Docs (https://developer.mozilla.org/), Node.js Docs (https://nodejs.org/en/docs).
+   - For Go: Go Documentation (https://go.dev/doc/).
+   - For Databases / SQL: PostgreSQL Docs (https://www.postgresql.org/docs/), MySQL Docs (https://dev.mysql.com/doc/).
+   - For General / Roadmaps / Practice: freeCodeCamp (https://www.freecodecamp.org/), roadmap.sh (https://roadmap.sh/).
+5. NEVER INVENT RESOURCE URLS:
+   - Only return genuine, live URLs you can identify with high confidence as real learning resources.
+   - Match resources strictly to the milestone topic (never attach Linux links to unrelated topics).
+   - If a specific deep URL is uncertain, provide the verified root documentation URL (e.g., https://docs.docker.com/ instead of an invented path).
+   - If no verified URL is known for a step, return an empty array [] for its resources. NEVER return placeholder URLs like example.com or todo.
+6. Consider the student's education, existing skills, and target role.
+7. Include one practical project relevant to the milestone with actionable tasks.
+8. Include 3 relevant interview questions with clear answers.
+9. Include 3 to 5 measurable success criteria.
+10. Keep the workload and estimated hours realistic.
+11. Return JSON only, without Markdown code fences.
 `;
 
   const advice = await generateJSON(prompt);
@@ -223,10 +338,22 @@ REQUIREMENTS:
     throw new Error("Gemini returned an invalid milestone action plan");
   }
 
+  // Sanitize action plan steps and their resources
+  advice.actionPlan = advice.actionPlan.map((step, index) => ({
+    step: typeof step.step === "number" ? step.step : index + 1,
+    title: typeof step.title === "string" ? step.title : `Step ${index + 1}`,
+    description: typeof step.description === "string" ? step.description : "",
+    estimatedHours: Number.isFinite(step.estimatedHours) ? step.estimatedHours : 2,
+    resources: sanitizeResources(step.resources, 3),
+  }));
+
+  // Sanitize top-level milestone resources
+  advice.resources = sanitizeResources(advice.resources, 5);
+
   return advice;
 }
 
 module.exports = {
   generateCareerRoadmap,
   generateMilestoneAdvice,
-};
+};
