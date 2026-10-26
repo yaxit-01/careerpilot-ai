@@ -6,22 +6,304 @@ const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 const MODEL = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
 
-// Shared Gemini JSON generation function.
+// Configuration for Gemini retry mechanism
+const MAX_RETRIES = 3;
+const INITIAL_DELAY_MS = 1000;
+const MAX_DELAY_MS = 15000;
+
+const RETRYABLE_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
+const PERMANENT_HTTP_STATUSES = new Set([400, 401, 403, 404, 405, 409, 413, 422]);
+
+// Sanitize strings to prevent logging API keys or sensitive tokens
+function sanitizeSecrets(text) {
+  if (!text) return "";
+  let str = typeof text === "string" ? text : String(text);
+  if (apiKey) {
+    str = str.split(apiKey).join("[REDACTED_API_KEY]");
+  }
+  str = str.replace(/([?&](?:api[_-]?key|key|token|auth)=)[^&\s"']+/gi, "$1[REDACTED]");
+  str = str.replace(/\b(AIza[0-9A-Za-z-_]{35})\b/g, "[REDACTED_API_KEY]");
+  return str;
+}
+
+// Extract HTTP status code from SDK errors or serialized error responses
+function extractStatusCode(error) {
+  if (!error) return null;
+
+  if (typeof error.status === "number") return error.status;
+  if (typeof error.statusCode === "number") return error.statusCode;
+
+  if (typeof error.status === "string" && /^\d{3}$/.test(error.status.trim())) {
+    return parseInt(error.status.trim(), 10);
+  }
+
+  if (typeof error.code === "number" && error.code >= 100 && error.code <= 599) {
+    return error.code;
+  }
+
+  if (typeof error.message === "string") {
+    try {
+      const parsed = JSON.parse(error.message);
+      const code = parsed?.error?.code || parsed?.code;
+      if (typeof code === "number" && code >= 100 && code <= 599) {
+        return code;
+      }
+    } catch {
+      // not JSON
+    }
+
+    const match = error.message.match(/\b(429|500|502|503|504|400|401|403|404|408)\b/);
+    if (match) {
+      return parseInt(match[1], 10);
+    }
+  }
+
+  return null;
+}
+
+// Extract a clean, user-friendly error message without raw JSON or leaked secrets
+function extractCleanErrorMessage(error) {
+  if (!error) return "Unknown error occurred";
+  if (typeof error.message === "string") {
+    try {
+      const parsed = JSON.parse(error.message);
+      if (parsed?.error?.message) {
+        return sanitizeSecrets(parsed.error.message);
+      }
+      if (parsed?.message) {
+        return sanitizeSecrets(parsed.message);
+      }
+    } catch {
+      // not JSON
+    }
+    return sanitizeSecrets(error.message);
+  }
+  return sanitizeSecrets(String(error));
+}
+
+// Determine if an error is temporary/transient and eligible for retry
+function isTransientError(error) {
+  if (!error) return false;
+
+  const status = extractStatusCode(error);
+
+  // Permanent HTTP status codes must not be retried
+  if (status && PERMANENT_HTTP_STATUSES.has(status)) {
+    return false;
+  }
+
+  // Explicit retryable HTTP status codes (429, 500, 502, 503, 504)
+  if (status && RETRYABLE_HTTP_STATUSES.has(status)) {
+    return true;
+  }
+
+  const message = String(error.message || "").toLowerCase();
+
+  // Permanent error indicators
+  if (
+    message.includes("api_key_invalid") ||
+    message.includes("api key not valid") ||
+    message.includes("invalid api key") ||
+    message.includes("permission_denied") ||
+    message.includes("permission denied") ||
+    message.includes("invalid_argument") ||
+    message.includes("invalid argument") ||
+    message.includes("not_found")
+  ) {
+    return false;
+  }
+
+  // Transient error indicators
+  if (
+    message.includes("resource_exhausted") ||
+    message.includes("rate limit") ||
+    message.includes("too many requests") ||
+    message.includes("unavailable") ||
+    message.includes("high demand") ||
+    message.includes("spikes in demand") ||
+    message.includes("deadline_exceeded") ||
+    message.includes("timeout") ||
+    message.includes("try again later") ||
+    message.includes("service unavailable") ||
+    message.includes("bad gateway") ||
+    message.includes("gateway timeout") ||
+    message.includes("overloaded")
+  ) {
+    return true;
+  }
+
+  // Network and socket level dropouts
+  const code = error.code || error.cause?.code;
+  const transientNetworkCodes = [
+    "ECONNRESET",
+    "ETIMEDOUT",
+    "ECONNREFUSED",
+    "EPIPE",
+    "ENOTFOUND",
+    "EAI_AGAIN",
+    "EHOSTUNREACH",
+    "UND_ERR_CONNECT_TIMEOUT",
+    "UND_ERR_SOCKET",
+    "UND_ERR_HEADERS_TIMEOUT",
+  ];
+
+  if (code && transientNetworkCodes.includes(code)) {
+    return true;
+  }
+
+  if (
+    message.includes("fetch failed") ||
+    message.includes("socket hang up") ||
+    message.includes("econnreset") ||
+    message.includes("network error")
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+// Extract any retry delay suggested by the API (e.g. google.rpc.RetryInfo or Retry-After header)
+function extractSuggestedDelayMs(error) {
+  if (!error) return null;
+
+  // 1. Check for google.rpc.RetryInfo in parsed error message
+  if (typeof error.message === "string") {
+    try {
+      const parsed = JSON.parse(error.message);
+      const details = parsed?.error?.details || parsed?.details;
+      if (Array.isArray(details)) {
+        for (const detail of details) {
+          if (detail && detail.retryDelay) {
+            if (typeof detail.retryDelay === "string") {
+              const sec = parseFloat(detail.retryDelay.replace(/s$/i, ""));
+              if (!isNaN(sec) && sec > 0) return Math.round(sec * 1000);
+            } else if (typeof detail.retryDelay === "object") {
+              const seconds = Number(detail.retryDelay.seconds || 0);
+              const nanos = Number(detail.retryDelay.nanos || 0);
+              const ms = seconds * 1000 + Math.round(nanos / 1e6);
+              if (ms > 0) return ms;
+            }
+          }
+        }
+      }
+    } catch {
+      // not JSON
+    }
+
+    // 2. Check for textual retry suggestions
+    const match = error.message.match(/retry (?:after|in) (\d+(?:\.\d+)?)\s*(s|sec|seconds|ms)?/i);
+    if (match) {
+      const val = parseFloat(match[1]);
+      const unit = (match[2] || "s").toLowerCase();
+      if (!isNaN(val) && val > 0) {
+        return unit.startsWith("ms") ? Math.round(val) : Math.round(val * 1000);
+      }
+    }
+  }
+
+  // 3. Check response headers
+  const headers = error.response?.headers || error.headers;
+  if (headers) {
+    const retryAfter = typeof headers.get === "function"
+      ? headers.get("retry-after")
+      : headers["retry-after"] || headers["Retry-After"];
+    if (retryAfter) {
+      const sec = parseFloat(retryAfter);
+      if (!isNaN(sec) && sec > 0) {
+        return Math.round(sec * 1000);
+      }
+      const date = Date.parse(retryAfter);
+      if (!isNaN(date) && date > Date.now()) {
+        return Math.min(date - Date.now(), 60000);
+      }
+    }
+  }
+
+  return null;
+}
+
+// Calculate delay using exponential backoff with jitter and suggested delay
+function calculateBackoffDelay(attempt, error, baseDelayMs = INITIAL_DELAY_MS, maxDelayMs = MAX_DELAY_MS) {
+  const suggested = extractSuggestedDelayMs(error);
+  const jitter = Math.floor(Math.random() * 500);
+
+  // If the API suggested a retry delay and it is practical, respect it
+  if (suggested && suggested > 0 && suggested <= maxDelayMs) {
+    return Math.min(suggested + jitter, maxDelayMs);
+  }
+
+  // Exponential backoff: base * 2^(attempt - 1) + jitter
+  const expDelay = baseDelayMs * Math.pow(2, attempt - 1);
+  return Math.min(expDelay + jitter, maxDelayMs);
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Reusable retry wrapper for Gemini generation requests
+async function callGeminiWithRetry(generatorFn, options = {}) {
+  const maxRetries = options.maxRetries ?? MAX_RETRIES;
+  const operationName = options.operationName || "Gemini generation";
+  let lastError;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await generatorFn();
+    } catch (error) {
+      lastError = error;
+      const status = extractStatusCode(error);
+      const cleanMessage = extractCleanErrorMessage(error);
+
+      // Do not retry invalid API keys, malformed requests, or other permanent errors
+      if (!isTransientError(error)) {
+        console.error(
+          `[CareerPilot AI] Non-retryable error during ${operationName} (HTTP ${status || "permanent"}): ${cleanMessage}`
+        );
+        throw error;
+      }
+
+      if (attempt < maxRetries) {
+        const delayMs = calculateBackoffDelay(attempt + 1, error);
+        console.warn(
+          `[CareerPilot AI] ${operationName} failed with transient error (${status ? `HTTP ${status}` : "Network/Unavailable"}: ${cleanMessage}). Retrying attempt ${attempt + 1}/${maxRetries} in ${delayMs}ms...`
+        );
+        await sleep(delayMs);
+      }
+    }
+  }
+
+  const status = extractStatusCode(lastError);
+  const cleanMessage = extractCleanErrorMessage(lastError);
+  console.error(
+    `[CareerPilot AI] ${operationName} failed after ${maxRetries} retries: ${cleanMessage}`
+  );
+
+  const finalError = new Error(
+    `Gemini request failed after ${maxRetries} retries (${status ? `HTTP ${status}` : "Transient Error"}): ${cleanMessage}`
+  );
+  finalError.originalError = lastError;
+  finalError.status = status;
+  throw finalError;
+}
+
+// Shared Gemini JSON generation function with retry mechanism.
 async function generateJSON(prompt) {
   if (!ai) {
     throw new Error("GEMINI_API_KEY is missing from server/.env");
   }
 
-  const response = await ai.models.generateContent({
-    model: MODEL,
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      temperature: 0.4,
-    },
-  });
+  const response = await callGeminiWithRetry(async () => {
+    return await ai.models.generateContent({
+      model: MODEL,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        temperature: 0.4,
+      },
+    });
+  }, { operationName: "generateJSON" });
 
-  const text = response.text;
+  const text = response?.text;
 
   if (!text) {
     throw new Error("Gemini returned an empty response");
@@ -132,6 +414,7 @@ function validateRoadmap(roadmap) {
     }
   }
 }
+
 // URL validation and sanitization for learning resources.
 function isValidResourceUrl(urlString) {
   if (!urlString || typeof urlString !== "string") return false;
@@ -356,4 +639,4 @@ REQUIREMENTS & RESOURCE GUIDELINES:
 module.exports = {
   generateCareerRoadmap,
   generateMilestoneAdvice,
-};
+};
